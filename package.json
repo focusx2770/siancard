@@ -19,7 +19,6 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@ast-grep/napi-win32-x64-msvc": "^0.51.1",
     "@opennextjs/cloudflare": "^1.20.15",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
