@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Profile } from '@/types/database';
+import { Profile, VerificationRequest } from '@/types/database';
 import { 
   ArrowLeft, 
   User, 
@@ -44,8 +44,9 @@ export default function MyProfilePage() {
   const [isVerified, setIsVerified] = useState(false);
 
   // KYC Verification State
-  const [verificationRequest, setVerificationRequest] = useState<any | null>(null);
+  const [verificationRequest, setVerificationRequest] = useState<VerificationRequest | null>(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyStep, setVerifyStep] = useState(1);
   const [verifyFullName, setVerifyFullName] = useState('');
   const [verifyPhone, setVerifyPhone] = useState('');
   const [verifyBankName, setVerifyBankName] = useState('กสิกรไทย (KBANK)');
@@ -58,6 +59,20 @@ export default function MyProfilePage() {
   const [submittingVerify, setSubmittingVerify] = useState(false);
 
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  function closeVerificationModal() {
+    setShowVerifyModal(false);
+    setVerifyStep(1);
+    setVerifyFullName('');
+    setVerifyPhone('');
+    setVerifyBankName('กสิกรไทย (KBANK)');
+    setVerifyBankAccount('');
+    setVerifyAccountName('');
+    setVerifyFacebookUrl('');
+    setTermsAccepted(false);
+    setIdCardFile(null);
+    setSelfieFile(null);
+  }
 
   useEffect(() => {
     let active = true;
@@ -239,50 +254,63 @@ export default function MyProfilePage() {
   const handleSubmitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!verifyFullName.trim()) {
-      alert('กรุณาระบุชื่อ-นามสกุลจริง');
+
+    if (verifyStep === 1) {
+      if (!verifyFullName.trim() || !verifyPhone.trim()) {
+        alert('กรุณากรอกชื่อ-นามสกุลจริงและหมายเลขโทรศัพท์');
+        return;
+      }
+      setVerifyStep(2);
       return;
     }
-    if (!verifyBankAccount.trim() || !verifyAccountName.trim()) {
-      alert('กรุณาระบุข้อมูลบัญชีธนาคารสำหรับรับเงินและตรวจสอบความถูกต้อง');
+
+    if (verifyStep === 2) {
+      if (!verifyBankName || !verifyBankAccount.trim() || !verifyAccountName.trim()) {
+        alert('กรุณากรอกข้อมูลบัญชีธนาคารสำหรับรับเงินให้ครบ');
+        return;
+      }
+      setVerifyStep(3);
       return;
     }
+
     if (!termsAccepted) {
-      alert('กรุณากดยอมรับข้อตกลงและเงื่อนไขการเป็นผู้ขาย Verified');
+      alert('กรุณายอมรับข้อตกลงและการใช้ข้อมูลเพื่อยืนยันตัวตน');
       return;
     }
     if (!idCardFile || !selfieFile) {
-      alert('กรุณาอัปโหลดรูปภาพให้ครบทั้ง 2 ภาพ (รูปบัตรประชาชน และรูปถ่ายหน้าคู่บัตร)');
+      alert('กรุณาอัปโหลดรูปบัตรประชาชนหรือหนังสือเดินทาง และรูปเซลฟี่คู่กับเอกสาร');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxFileSize = 10 * 1024 * 1024;
+    if ([idCardFile, selfieFile].some((file) => !allowedTypes.includes(file.type))) {
+      alert('กรุณาใช้ไฟล์ภาพ JPG, PNG หรือ WEBP เท่านั้น');
+      return;
+    }
+    if ([idCardFile, selfieFile].some((file) => file.size > maxFileSize)) {
+      alert('ไฟล์แต่ละภาพต้องมีขนาดไม่เกิน 10 MB');
       return;
     }
 
     setSubmittingVerify(true);
+    const uploadedPaths: string[] = [];
     try {
-      // 1. อัปโหลดรูปบัตร ปชช.
-      const idExt = idCardFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const idFileName = `kyc/${user.id}/idcard_${Date.now()}.${idExt}`;
+      const getExtension = (file: File) => file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const idFileName = `${user.id}/${crypto.randomUUID()}-identity.${getExtension(idCardFile)}`;
       const { error: idUploadErr } = await supabase.storage
-        .from('card-images')
+        .from('kyc-documents')
         .upload(idFileName, idCardFile, { contentType: idCardFile.type || 'image/jpeg' });
       if (idUploadErr) throw idUploadErr;
+      uploadedPaths.push(idFileName);
 
-      const { data: { publicUrl: idCardUrl } } = supabase.storage
-        .from('card-images')
-        .getPublicUrl(idFileName);
-
-      // 2. อัปโหลดรูปคู่บัตร
-      const selfieExt = selfieFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const selfieFileName = `kyc/${user.id}/selfie_${Date.now()}.${selfieExt}`;
+      const selfieFileName = `${user.id}/${crypto.randomUUID()}-selfie.${getExtension(selfieFile)}`;
       const { error: selfieUploadErr } = await supabase.storage
-        .from('card-images')
+        .from('kyc-documents')
         .upload(selfieFileName, selfieFile, { contentType: selfieFile.type || 'image/jpeg' });
       if (selfieUploadErr) throw selfieUploadErr;
+      uploadedPaths.push(selfieFileName);
 
-      const { data: { publicUrl: selfieUrl } } = supabase.storage
-        .from('card-images')
-        .getPublicUrl(selfieFileName);
-
-      // 3. บันทึกคำขอลงตาราง verification_requests
       const { data: newReq, error: insertErr } = await supabase
         .from('verification_requests')
         .insert({
@@ -295,8 +323,8 @@ export default function MyProfilePage() {
           facebook_url: verifyFacebookUrl.trim() || null,
           terms_accepted: true,
           terms_accepted_at: new Date().toISOString(),
-          id_card_photo: idCardUrl,
-          selfie_photo: selfieUrl,
+          id_card_photo: idFileName,
+          selfie_photo: selfieFileName,
           status: 'pending',
         })
         .select()
@@ -305,13 +333,18 @@ export default function MyProfilePage() {
       if (insertErr) throw insertErr;
 
       setVerificationRequest(newReq);
-      setShowVerifyModal(false);
+      closeVerificationModal();
       setFeedbackMsg({
         type: 'success',
-        text: 'ส่งหลักฐานยืนยันตัวตนเรียบร้อยแล้ว! แอดมินจะตรวจสอบและอนุมัติป้ายให้โดยเร็ว',
+        text: 'ส่งคำขอยืนยันตัวตนเรียบร้อยแล้ว! เอกสารจะถูกเก็บเป็นส่วนตัวและรอแอดมินตรวจสอบ',
       });
-    } catch (err: any) {
-      alert('ส่งข้อมูลไม่สำเร็จ: ' + (err.message || 'เกิดข้อผิดพลาด'));
+    } catch (err: unknown) {
+      if (uploadedPaths.length > 0) {
+        const { error: cleanupError } = await supabase.storage.from('kyc-documents').remove(uploadedPaths);
+        if (cleanupError) console.error('Failed to clean up verification documents:', cleanupError);
+      }
+      console.error('Failed to submit verification request:', err);
+      alert('ส่งข้อมูลไม่สำเร็จ: ' + (err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'));
     } finally {
       setSubmittingVerify(false);
     }
@@ -467,7 +500,10 @@ export default function MyProfilePage() {
           {!isVerified && verificationRequest?.status !== 'pending' && (
             <button
               type="button"
-              onClick={() => setShowVerifyModal(true)}
+              onClick={() => {
+                setVerifyStep(1);
+                setShowVerifyModal(true);
+              }}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-sm shrink-0 cursor-pointer"
             >
               + ขอยืนยันตัวตน
@@ -620,7 +656,7 @@ export default function MyProfilePage() {
                 </div>
               </div>
               <button
-                onClick={() => setShowVerifyModal(false)}
+                onClick={closeVerificationModal}
                 className="text-gray-400 hover:text-gray-600 text-sm font-bold p-1 cursor-pointer"
               >
                 ✕
@@ -628,21 +664,38 @@ export default function MyProfilePage() {
             </div>
 
             <form onSubmit={handleSubmitVerification} className="mt-4 space-y-4">
+              <div className="flex items-center gap-2" aria-label={`ขั้นตอนที่ ${verifyStep} จาก 3`}>
+                {['ข้อมูลส่วนตัว', 'บัญชีธนาคาร', 'ช่องทางติดต่อและเอกสาร'].map((step, index) => {
+                  const stepNumber = index + 1;
+                  const isCurrent = verifyStep === stepNumber;
+                  const isComplete = verifyStep > stepNumber;
+                  return (
+                    <div key={step} className="flex-1 min-w-0">
+                      <div className={`h-1.5 rounded-full ${isComplete || isCurrent ? 'bg-purple-600' : 'bg-gray-200'}`} />
+                      <p className={`mt-1.5 text-[10px] sm:text-xs truncate ${isCurrent ? 'font-bold text-purple-700' : 'text-gray-500'}`}>
+                        {stepNumber}. {step}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {verifyStep === 1 && (
+                <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  ชื่อ-นามสกุลจริงตามบัตรประชาชน <span className="text-red-500">*</span>
+                  ชื่อ-นามสกุลจริงตามบัตรประชาชนหรือหนังสือเดินทาง <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={verifyFullName}
                   onChange={(e) => setVerifyFullName(e.target.value)}
-                  placeholder="เช่น นาย สมชาย ใจดี"
+                  placeholder="กรอกชื่อและนามสกุลตามเอกสาร"
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     เบอร์โทรศัพท์ติดต่อ <span className="text-red-500">*</span>
@@ -653,25 +706,15 @@ export default function MyProfilePage() {
                     value={verifyPhone}
                     onChange={(e) => setVerifyPhone(e.target.value)}
                     placeholder="เช่น 0812345678"
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    ลิงก์ Facebook / โปรไฟล์โซเชียล
-                  </label>
-                  <input
-                    type="url"
-                    value={verifyFacebookUrl}
-                    onChange={(e) => setVerifyFacebookUrl(e.target.value)}
-                    placeholder="https://facebook.com/..."
+                    autoComplete="tel"
                     className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
               </div>
+              )}
 
-              {/* ข้อมูลบัญชีธนาคารรับเงิน */}
+              {verifyStep === 2 && (
+              <>
               <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200/80 space-y-3">
                 <span className="text-xs font-black text-purple-900 block">
                   💳 บัญชีธนาคารสำหรับรับเงิน (ต้องตรงกับชื่อบัตรประชาชน)
@@ -720,48 +763,67 @@ export default function MyProfilePage() {
                   </div>
                 </div>
               </div>
+              <p className="text-[11px] text-gray-500">
+                ชื่อบัญชีธนาคารต้องตรงกับชื่อ-นามสกุลที่ระบุในเอกสารยืนยันตัวตน
+              </p>
+              </>
+              )}
 
+              {verifyStep === 3 && (
+              <>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  1. รูปถ่ายหน้าบัตรประชาชน <span className="text-red-500">*</span>
+                  ลิงก์ Facebook Profile / Page หรือช่องทางโซเชียล
+                </label>
+                <input
+                  type="url"
+                  value={verifyFacebookUrl}
+                  onChange={(e) => setVerifyFacebookUrl(e.target.value)}
+                  placeholder="https://facebook.com/..."
+                  autoComplete="url"
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  รูปถ่ายด้านหน้าบัตรประชาชนหรือหนังสือเดินทาง <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
-                  required
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => e.target.files && setIdCardFile(e.target.files[0])}
                   className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                 />
                 <span className="text-[11px] text-gray-400 mt-1 block">
-                  * สามารถใช้ปากกาหรือกระดาษเขียนทับว่า &quot;สำหรับยืนยันตัวตน SianCard เท่านั้น&quot; ได้
+                  ภาพต้องชัดเจน เห็นข้อมูลบนเอกสารครบ และรองรับ JPG, PNG หรือ WEBP ไม่เกิน 10 MB
                 </span>
+                {idCardFile && <span className="text-xs text-purple-700 block mt-1">{idCardFile.name}</span>}
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  2. รูปถ่ายหน้าคู่กับบัตรประชาชน (Selfie) <span className="text-red-500">*</span>
+                  รูปถ่าย Selfie คู่กับเอกสารยืนยันตัวตน <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
-                  required
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => e.target.files && setSelfieFile(e.target.files[0])}
                   className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                 />
                 <span className="text-[11px] text-gray-400 mt-1 block">
-                  * ถ่ายให้เห็นใบหน้าและบัตรชัดเจน เพื่อยืนยันว่าตรงกับตัวจริง
+                  ถ่ายให้เห็นใบหน้าและเอกสารชัดเจน เพื่อยืนยันว่าเป็นเจ้าของเอกสารตัวจริง
                 </span>
+                {selfieFile && <span className="text-xs text-purple-700 block mt-1">{selfieFile.name}</span>}
               </div>
 
-              {/* ข้อตกลงและเงื่อนไขการเป็น Verified Seller (Terms & Conditions) */}
               <div className="bg-amber-50/70 border border-amber-200 p-3.5 rounded-2xl space-y-2 text-xs text-amber-900">
                 <span className="font-black flex items-center gap-1.5 text-amber-800">
-                  ⚠️ ข้อกำหนดและความรับผิดชอบของผู้ขาย Verified
+                  ⚠️ ข้อตกลงและการใช้ข้อมูลเพื่อยืนยันตัวตน
                 </span>
                 <ul className="list-disc pl-4 space-y-1 text-[11px] text-amber-800/90 leading-relaxed">
-                  <li>ข้าพเจ้ายืนยันว่าข้อมูลบัตรประชาชนและบัญชีธนาคารเป็นของจริงและเป็นของข้าพเจ้าแต่เพียงผู้เดียว</li>
+                  <li>ข้าพเจ้ายืนยันว่าข้อมูลและเอกสารที่ส่งเป็นความจริงและเป็นของข้าพเจ้า</li>
+                  <li>ข้าพเจ้ายินยอมให้ SianCard ใช้ข้อมูลติดต่อ บัญชีธนาคาร และภาพเอกสารเพื่อพิจารณาคำขอยืนยันตัวตน โดยจำกัดการเข้าถึงเอกสารไว้เฉพาะผู้ดูแลที่ได้รับอนุญาต</li>
                   <li>ข้าพเจ้าสัญญาว่าจะส่งมอบการ์ดแท้ สภาพตรงตามรูปถ่าย และแพ็คสินค้าอย่างแน่นหนาปลอดภัย</li>
-                  <li>หากมีพฤติกรรมฉ้อโกง หลอกลวง หรือไม่ส่งมอบสินค้า ข้าพเจ้ายินยอมให้ทีมงาน SianCard ระงับบัญชีถาวร และเปิดเผยข้อมูลเพื่อดำเนินคดีตามกฎหมายอย่างถึงที่สุด</li>
                 </ul>
                 <div className="pt-2 border-t border-amber-200/60 flex items-start gap-2">
                   <input
@@ -773,25 +835,37 @@ export default function MyProfilePage() {
                     className="mt-0.5 rounded border-amber-400 text-purple-600 focus:ring-purple-500 cursor-pointer"
                   />
                   <label htmlFor="terms-check" className="font-bold text-xs text-amber-900 cursor-pointer select-none">
-                    ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงและเงื่อนไขข้างต้นทุกประการ
+                    ข้าพเจ้าได้อ่านและยินยอมให้ใช้ข้อมูลตามวัตถุประสงค์ข้างต้น
                   </label>
                 </div>
               </div>
+              </>
+              )}
 
               <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowVerifyModal(false)}
+                  onClick={closeVerificationModal}
                   className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
+                {verifyStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setVerifyStep((step) => step - 1)}
+                    disabled={submittingVerify}
+                    className="px-4 py-2 border border-purple-200 text-purple-700 hover:bg-purple-50 rounded-xl text-xs font-semibold disabled:opacity-60 cursor-pointer"
+                  >
+                    ย้อนกลับ
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={submittingVerify}
                   className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md disabled:opacity-60 cursor-pointer"
                 >
-                  {submittingVerify ? 'กำลังอัปโหลด...' : 'ส่งเอกสารยืนยัน'}
+                  {submittingVerify ? 'กำลังส่งข้อมูล...' : verifyStep < 3 ? 'หน้าถัดไป' : 'ส่งคำขอยืนยันตัวตน'}
                 </button>
               </div>
             </form>
@@ -801,4 +875,3 @@ export default function MyProfilePage() {
     </div>
   );
 }
-

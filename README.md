@@ -25,6 +25,10 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 Listing URLs use an 8-character alphanumeric code while the database retains the UUID as its internal key. For an existing Supabase database, run [`listing_short_codes_schema.sql`](./listing_short_codes_schema.sql) in the Supabase SQL Editor before deploying the application changes. New database setups using `supabase_schema_updated.sql` already create this column and its generator.
 
+## Seller verification documents
+
+For seller verification, run [`verification_requests_schema.sql`](./verification_requests_schema.sql) and [`verification_storage_setup.sql`](./verification_storage_setup.sql) in the Supabase SQL Editor. New identity-document uploads use a private bucket accessible to the document owner and admins only. Documents uploaded before this change to the public `card-images` bucket remain public; migrate them to the private bucket or delete them in Supabase Storage.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

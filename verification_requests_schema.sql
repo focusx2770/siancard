@@ -1,4 +1,5 @@
 -- ตารางคำขอยืนยันตัวตนผู้ขาย (Seller Verification Requests / KYC)
+-- Run verification_storage_setup.sql to create the private document bucket and access policies.
 create table if not exists verification_requests (
   id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references profiles(id) on delete cascade,

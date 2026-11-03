@@ -315,6 +315,26 @@ function AdminContent() {
     }
   }
 
+  async function handlePreviewVerificationDocument(path: string) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+    const legacyPublicPrefix = `${supabaseUrl}/storage/v1/object/public/card-images/kyc/`;
+    if (supabaseUrl && path.startsWith(legacyPublicPrefix)) {
+      setPreviewImage(path);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('kyc-documents')
+        .createSignedUrl(path, 300);
+      if (error) throw error;
+      setPreviewImage(data.signedUrl);
+    } catch (err: unknown) {
+      console.error('Error opening verification document:', err);
+      alert('เปิดเอกสารยืนยันตัวตนไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และการตั้งค่า private bucket');
+    }
+  }
+
   // มอบ/ยกเลิกป้าย Verified Seller แบบแมนนวลในแท็บจัดการสมาชิก
   async function handleToggleVerified(userId: string, currentStatus: boolean) {
     try {
@@ -783,10 +803,13 @@ function AdminContent() {
                           <span className="text-[11px] text-gray-400 block mb-1">1. รูปบัตรประชาชน</span>
                           <button
                             type="button"
-                            onClick={() => setPreviewImage(v.id_card_photo)}
+                            onClick={() => handlePreviewVerificationDocument(v.id_card_photo)}
                             className="w-full h-36 rounded-xl overflow-hidden border border-purple-800/50 relative group cursor-pointer hover:border-purple-400 transition"
                           >
-                            <img src={v.id_card_photo} alt="ID card" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                            <div className="w-full h-full bg-purple-950/40 flex flex-col items-center justify-center gap-2 text-purple-200">
+                              <Eye className="h-6 w-6" />
+                              <span className="text-[11px]">ดูเอกสารส่วนตัว</span>
+                            </div>
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
                               <Eye className="h-6 w-6 text-white" />
                             </div>
@@ -797,10 +820,13 @@ function AdminContent() {
                           <span className="text-[11px] text-gray-400 block mb-1">2. รูปถ่ายหน้าคู่บัตร (Selfie)</span>
                           <button
                             type="button"
-                            onClick={() => setPreviewImage(v.selfie_photo)}
+                            onClick={() => handlePreviewVerificationDocument(v.selfie_photo)}
                             className="w-full h-36 rounded-xl overflow-hidden border border-purple-800/50 relative group cursor-pointer hover:border-purple-400 transition"
                           >
-                            <img src={v.selfie_photo} alt="Selfie" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                            <div className="w-full h-full bg-purple-950/40 flex flex-col items-center justify-center gap-2 text-purple-200">
+                              <Eye className="h-6 w-6" />
+                              <span className="text-[11px]">ดูเอกสารส่วนตัว</span>
+                            </div>
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
                               <Eye className="h-6 w-6 text-white" />
                             </div>
