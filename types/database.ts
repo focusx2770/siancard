@@ -22,6 +22,7 @@ export interface Profile {
   role?: string;
   is_banned?: boolean;
   show_contact?: boolean;
+  is_verified?: boolean;
 }
 
 export interface Listing {

@@ -33,6 +33,7 @@ create table if not exists profiles (
   line_id       text,              -- contact channel shown only if seller allows
   contact_email text,
   show_contact  boolean not null default false,
+  is_verified   boolean not null default false,
   role          user_role not null default 'user',
   is_banned     boolean not null default false,
   created_at    timestamptz not null default now()

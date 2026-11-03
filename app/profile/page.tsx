@@ -118,7 +118,7 @@ export default function MyProfilePage() {
       setContactEmail(profile.contact_email || userEmail);
       setAvatarUrl(profile.avatar_url || null);
       setCreatedAt(profile.created_at || '');
-      setIsVerified(!!profile.show_contact);
+      setIsVerified(!!profile.is_verified);
     } else {
       // ถ้ายังไม่มีโปรไฟล์ในตาราง ให้ตั้งค่าเริ่มต้น
       setDisplayName(userEmail.split('@')[0]);

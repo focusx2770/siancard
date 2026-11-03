@@ -193,7 +193,8 @@ function SellerProfileContent() {
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
       : null;
 
-  const isVerifiedSeller = completedDealsCount >= 1 || (reviews.length > 0 && Number(averageRating) >= 4.0);
+  const isVerifiedSeller = seller?.is_verified === true;
+  const hasSellerHistoryBadge = completedDealsCount >= 1 || (reviews.length > 0 && Number(averageRating) >= 4.0);
 
   if (loading) {
     return (
@@ -272,7 +273,13 @@ function SellerProfileContent() {
                   {isVerifiedSeller && (
                     <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold px-2.5 py-0.5 rounded-full">
                       <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
-                      ผู้ขายที่ได้รับการรับรอง (Verified)
+                      ยืนยันตัวตนแล้ว (Verified)
+                    </span>
+                  )}
+                  {hasSellerHistoryBadge && (
+                    <span className="inline-flex items-center gap-1 bg-green-50 text-green-800 border border-green-200 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                      ผู้ขายมีประวัติการซื้อขาย
                     </span>
                   )}
                 </div>

@@ -27,7 +27,7 @@ Listing URLs use an 8-character alphanumeric code while the database retains the
 
 ## Seller verification documents
 
-For seller verification, run [`verification_requests_schema.sql`](./verification_requests_schema.sql) and [`verification_storage_setup.sql`](./verification_storage_setup.sql) in the Supabase SQL Editor. New identity-document uploads use a private bucket accessible to the document owner and admins only. Documents uploaded before this change to the public `card-images` bucket remain public; migrate them to the private bucket or delete them in Supabase Storage.
+For seller verification, run [`verification_requests_schema.sql`](./verification_requests_schema.sql), [`verification_storage_setup.sql`](./verification_storage_setup.sql), and [`verified_seller_status.sql`](./verified_seller_status.sql) in the Supabase SQL Editor. The status migration adds the public verification flag and admin-only RPCs used to approve/reject requests. New identity-document uploads use a private bucket accessible to the document owner and admins only. Documents uploaded before this change to the public `card-images` bucket remain public; migrate them to the private bucket or delete them in Supabase Storage.
 
 ## Learn More
 

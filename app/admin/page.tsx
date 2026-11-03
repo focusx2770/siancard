@@ -279,22 +279,18 @@ function AdminContent() {
     if (!confirm(`ยืนยันการอนุมัติให้ "${reqItem.full_name}" ได้รับป้าย Verified Seller หรือไม่?`)) return;
 
     try {
-      // 1. อัปเดตตาราง verification_requests
-      await supabase
-        .from('verification_requests')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
-        .eq('id', reqItem.id);
-
-      // 2. ให้ป้าย Verified ใน profiles (show_contact = true)
-      await supabase
-        .from('profiles')
-        .update({ show_contact: true })
-        .eq('id', reqItem.user_id);
+      const { error } = await supabase.rpc('review_verification_request', {
+        p_request_id: reqItem.id,
+        p_status: 'approved',
+        p_admin_notes: null,
+      });
+      if (error) throw error;
 
       alert(`อนุมัติให้คุณ ${reqItem.full_name} เรียบร้อยแล้ว`);
-      fetchAdminData();
+      await fetchAdminData();
     } catch (err) {
       console.error('Error approving verification:', err);
+      alert('อนุมัติไม่สำเร็จ กรุณาตรวจสอบว่ารัน migration verified_seller_status.sql ใน Supabase แล้ว');
     }
   }
 
@@ -303,15 +299,18 @@ function AdminContent() {
     if (!reason) return;
 
     try {
-      await supabase
-        .from('verification_requests')
-        .update({ status: 'rejected', admin_notes: reason, updated_at: new Date().toISOString() })
-        .eq('id', reqItem.id);
+      const { error } = await supabase.rpc('review_verification_request', {
+        p_request_id: reqItem.id,
+        p_status: 'rejected',
+        p_admin_notes: reason,
+      });
+      if (error) throw error;
 
       alert('ปฏิเสธคำขอเรียบร้อยแล้ว');
-      fetchAdminData();
+      await fetchAdminData();
     } catch (err) {
       console.error('Error rejecting verification:', err);
+      alert('ปฏิเสธคำขอไม่สำเร็จ กรุณาตรวจสอบว่ารัน migration verified_seller_status.sql ใน Supabase แล้ว');
     }
   }
 
@@ -338,14 +337,16 @@ function AdminContent() {
   // มอบ/ยกเลิกป้าย Verified Seller แบบแมนนวลในแท็บจัดการสมาชิก
   async function handleToggleVerified(userId: string, currentStatus: boolean) {
     try {
-      await supabase
-        .from('profiles')
-        .update({ show_contact: !currentStatus })
-        .eq('id', userId);
+      const { error } = await supabase.rpc('admin_set_profile_verified', {
+        p_user_id: userId,
+        p_is_verified: !currentStatus,
+      });
+      if (error) throw error;
 
-      fetchAdminData();
+      await fetchAdminData();
     } catch (err) {
       console.error('Error toggling verified:', err);
+      alert('เปลี่ยนสถานะ Verified ไม่สำเร็จ กรุณาตรวจสอบว่ารัน migration verified_seller_status.sql ใน Supabase แล้ว');
     }
   }
 
@@ -938,7 +939,7 @@ function AdminContent() {
                     <div>
                       <div className="font-bold text-sm text-gray-200 flex items-center gap-1.5">
                         {u.display_name}
-                        {u.show_contact && (
+                        {u.is_verified && (
                           <span title="Verified Seller">
                             <ShieldCheck className="h-4 w-4 text-green-400" />
                           </span>
@@ -957,13 +958,13 @@ function AdminContent() {
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => u.id && handleToggleVerified(u.id, !!u.show_contact)}
-                      className={`text-xs px-2.5 py-1.5 rounded-xl border transition ${u.show_contact
+                      onClick={() => u.id && handleToggleVerified(u.id, !!u.is_verified)}
+                      className={`text-xs px-2.5 py-1.5 rounded-xl border transition ${u.is_verified
                           ? 'border-green-600/50 text-green-400 bg-green-950/20 hover:bg-green-950/40'
                           : 'border-gray-700 text-gray-400 hover:text-white'
                         }`}
                     >
-                      {u.show_contact ? '✓ ป้าย Verified แล้ว' : '+ ให้ป้าย Verified'}
+                      {u.is_verified ? '✓ ป้าย Verified แล้ว' : '+ ให้ป้าย Verified'}
                     </button>
 
                     <Link
