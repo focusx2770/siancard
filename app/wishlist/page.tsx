@@ -146,7 +146,7 @@ export default function WishlistPage() {
                     <Trash2 className="h-4 w-4" />
                   </button>
 
-                  <Link href={`/listings/create/${item.id}`} className="block">
+                  <Link href={`/listings/create/${item.listing_code}`} className="block">
                     <div className="relative h-64 bg-gray-100 flex items-center justify-center overflow-hidden">
                       {mainImage ? (
                         <img
@@ -169,7 +169,7 @@ export default function WishlistPage() {
                         <span>{item.cards?.games?.name || 'TCG'}</span>
                         <span className="text-gray-400 font-normal">{item.cards?.card_sets?.code}</span>
                       </div>
-                      <Link href={`/listings/create/${item.id}`}>
+                      <Link href={`/listings/create/${item.listing_code}`}>
                         <h3 className="font-bold text-gray-900 text-base mt-1 line-clamp-1 group-hover:text-purple-700 transition">
                           {item.cards?.name}
                         </h3>
@@ -198,4 +198,3 @@ export default function WishlistPage() {
     </div>
   );
 }
-

@@ -21,6 +21,10 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Listing short codes
+
+Listing URLs use an 8-character alphanumeric code while the database retains the UUID as its internal key. For an existing Supabase database, run [`listing_short_codes_schema.sql`](./listing_short_codes_schema.sql) in the Supabase SQL Editor before deploying the application changes. New database setups using `supabase_schema_updated.sql` already create this column and its generator.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

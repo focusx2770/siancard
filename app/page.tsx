@@ -349,7 +349,7 @@ export default function Home() {
                         <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-red-500' : ''}`} />
                       </button>
 
-                      <Link href={`/listings/create/${item.id}`} className="block">
+                      <Link href={`/listings/create/${item.listing_code}`} className="block">
                         <div className="relative h-64 bg-[#181335] flex items-center justify-center overflow-hidden">
                           {mainImage ? (
                             <img
@@ -388,7 +388,7 @@ export default function Home() {
                               </Link>
                             )}
                           </div>
-                          <Link href={`/listings/create/${item.id}`}>
+                          <Link href={`/listings/create/${item.listing_code}`}>
                             <h3 className="font-bold text-white text-base mt-1 line-clamp-1 group-hover:text-purple-300 transition">
                               {item.cards?.name}
                             </h3>

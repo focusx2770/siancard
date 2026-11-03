@@ -660,7 +660,7 @@ function MessagesContent() {
                     {/* การ์ดที่กำลังคุยกัน (Pinned Listing Card Header) */}
                     {activeConv.listing && (
                       <Link
-                        href={`/listings/create/${activeConv.listing.id}`}
+                        href={`/listings/create/${activeConv.listing.listing_code}`}
                         className="flex items-center gap-1.5 sm:gap-2 bg-purple-50/80 border border-purple-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl hover:bg-purple-100 transition max-w-[130px] sm:max-w-none"
                       >
                         {activeConv.listing.cards?.image_url && (

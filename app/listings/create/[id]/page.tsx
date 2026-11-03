@@ -9,18 +9,18 @@ import { Listing } from '@/types/database';
 import { getWishlistIds, toggleWishlist } from '@/lib/wishlist';
 import { fetchExternalPrice, ExternalCardPrice } from '@/lib/card-price';
 import ReportModal from '@/components/ReportModal';
-import { 
-  ArrowLeft, 
-  ShieldCheck, 
-  Tag, 
-  MessageCircle, 
-  Mail, 
-  AlertTriangle, 
-  Calendar, 
-  User, 
-  Heart, 
-  TrendingDown, 
-  BarChart2, 
+import {
+  ArrowLeft,
+  ShieldCheck,
+  Tag,
+  MessageCircle,
+  Mail,
+  AlertTriangle,
+  Calendar,
+  User,
+  Heart,
+  TrendingDown,
+  BarChart2,
   Sparkles,
   CheckCircle2,
   Globe,
@@ -49,6 +49,7 @@ function ListingDetailContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,16 +89,17 @@ function ListingDetailContent() {
 
   async function fetchListingDetail() {
     setLoading(true);
-    const { data, error } = await supabase
+    const listingQuery = supabase
       .from('listings')
       .select(`
         *,
         cards (*, games(*), card_sets(*)),
         profiles (*),
         listing_images (*)
-      `)
-      .eq('id', id)
-      .single();
+      `);
+    const { data, error } = isUuid
+      ? await listingQuery.eq('id', id).single()
+      : await listingQuery.eq('listing_code', id).single();
 
     if (error) {
       console.error('Error fetching listing detail:', error);
@@ -247,7 +249,7 @@ function ListingDetailContent() {
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 mt-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* ฝั่งซ้าย: Gallery รูปภาพ */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 p-4 flex items-center justify-center h-[300px] sm:h-[420px] shadow-sm relative overflow-hidden">
@@ -260,7 +262,7 @@ function ListingDetailContent() {
               ) : (
                 <Tag className="h-20 w-20 text-gray-300" />
               )}
-              
+
               {/* ป้ายกำกับสภาพการ์ด & ป้ายรูปจริง */}
               <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
                 <span className="bg-black/75 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-md border border-white/10">
@@ -277,11 +279,10 @@ function ListingDetailContent() {
               {/* ปุ่ม Wishlist บนรูป */}
               <button
                 onClick={handleToggleWishlist}
-                className={`absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition transform hover:scale-110 cursor-pointer ${
-                  isWishlisted
+                className={`absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition transform hover:scale-110 cursor-pointer ${isWishlisted
                     ? 'bg-red-50 text-red-500 border border-red-200'
                     : 'bg-white/90 backdrop-blur-md text-gray-400 hover:text-red-500'
-                }`}
+                  }`}
                 title={isWishlisted ? 'นำออกจากรายการโปรด' : 'บันทึกลงรายการโปรด'}
               >
                 <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
@@ -302,14 +303,12 @@ function ListingDetailContent() {
                       <button
                         key={index}
                         onClick={() => setSelectedImage(imgUrl)}
-                        className={`relative w-20 h-24 rounded-2xl border-2 overflow-hidden flex-shrink-0 transition cursor-pointer group ${
-                          selectedImage === imgUrl ? 'border-purple-600 scale-95 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100'
-                        }`}
+                        className={`relative w-20 h-24 rounded-2xl border-2 overflow-hidden flex-shrink-0 transition cursor-pointer group ${selectedImage === imgUrl ? 'border-purple-600 scale-95 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100'
+                          }`}
                       >
                         <img src={imgUrl} alt={`thumbnail-${index}`} className="w-full h-full object-cover" />
-                        <span className={`absolute bottom-0 inset-x-0 text-[9px] font-bold py-0.5 text-center text-white ${
-                          isRealPhoto ? 'bg-purple-700/90' : 'bg-gray-800/80'
-                        }`}>
+                        <span className={`absolute bottom-0 inset-x-0 text-[9px] font-bold py-0.5 text-center text-white ${isRealPhoto ? 'bg-purple-700/90' : 'bg-gray-800/80'
+                          }`}>
                           {isRealPhoto ? `รูปจริง ${index + 1}` : 'ภาพทางการ'}
                         </span>
                       </button>
@@ -322,7 +321,7 @@ function ListingDetailContent() {
 
           {/* ฝั่งขวา: รายละเอียด & สถิติราคากลาง & ปุ่มติดต่อขาย */}
           <div className="space-y-6">
-            
+
             {/* หัวข้อและราคา */}
             <div className="bg-white p-6 sm:p-7 rounded-3xl border border-gray-200 shadow-xs space-y-3">
               <div className="flex items-center space-x-2 text-xs font-semibold text-purple-700">
@@ -332,9 +331,12 @@ function ListingDetailContent() {
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black text-gray-900">{listing.cards?.name}</h1>
+              <p className="text-xs text-gray-400">
+                รหัสประกาศ: <span className="font-semibold text-gray-600">{listing.listing_code}</span>
+              </p>
               <p className="text-sm text-gray-500">
-                หมายเลขการ์ด: <span className="font-semibold text-gray-700">{listing.cards?.card_number || '-'}</span> | 
-                ความหายาก: <span className="font-semibold text-purple-600">{listing.cards?.rarity || '-'}</span> | 
+                หมายเลขการ์ด: <span className="font-semibold text-gray-700">{listing.cards?.card_number || '-'}</span> |
+                ความหายาก: <span className="font-semibold text-purple-600">{listing.cards?.rarity || '-'}</span> |
                 ภาษา: <span className="font-semibold text-gray-700">{listing.cards?.language}</span>
               </p>
 

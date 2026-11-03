@@ -352,7 +352,7 @@ function CardHubContent() {
                     <div className="flex items-center gap-4">
                       {/* Thumbnail ภาพจริง */}
                       <Link
-                        href={`/listings/create/${item.id}`}
+                        href={`/listings/create/${item.listing_code}`}
                         className="w-14 h-18 sm:w-16 sm:h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200 shadow-xs relative group"
                       >
                         {mainPhoto ? (
@@ -424,7 +424,7 @@ function CardHubContent() {
 
                         {/* ดูรายละเอียด */}
                         <Link
-                          href={`/listings/create/${item.id}`}
+                          href={`/listings/create/${item.listing_code}`}
                           className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-xs transition"
                         >
                           ดูการ์ดจริง
@@ -444,4 +444,3 @@ function CardHubContent() {
     </div>
   );
 }
-

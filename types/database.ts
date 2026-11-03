@@ -26,6 +26,7 @@ export interface Profile {
 
 export interface Listing {
   id: string;
+  listing_code: string;
   seller_id: string;
   card_id: string;
   condition: CardCondition;

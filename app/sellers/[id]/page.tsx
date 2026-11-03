@@ -460,7 +460,7 @@ function SellerProfileContent() {
                 return (
                   <Link
                     key={item.id}
-                    href={`/listings/create/${item.id}`}
+                    href={`/listings/create/${item.listing_code}`}
                     className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-purple-300 transition duration-200 group flex flex-col"
                   >
                     <div className="relative h-64 bg-gray-100 flex items-center justify-center overflow-hidden">

@@ -566,7 +566,7 @@ export default function MyListingsPage() {
                   <div className="flex items-center gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 justify-end shrink-0">
                     {/* ดูหน้าสินค้า */}
                     <Link
-                      href={`/listings/create/${item.id}`}
+                      href={`/listings/create/${item.listing_code}`}
                       className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition border border-gray-200"
                       title="ดูหน้ารายละเอียดการ์ด"
                     >
