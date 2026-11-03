@@ -24,8 +24,20 @@ import {
   Eye,
   Trash2,
   Lock,
-  Sparkles
+  Sparkles,
+  ImagePlus,
+  Plus,
+  Pencil,
+  Save
 } from 'lucide-react';
+import type { HomeBanner } from '@/components/HeroCategoryExplorer';
+
+interface AdminBanner extends HomeBanner {
+  image_path: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
 
 function LoadingAdmin() {
   return (
@@ -46,7 +58,7 @@ export default function AdminPage() {
 function AdminContent() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'verifications' | 'listings' | 'users'>('reports');
+  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'verifications' | 'listings' | 'users' | 'banners'>('reports');
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -65,6 +77,17 @@ function AdminContent() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
+  const [banners, setBanners] = useState<AdminBanner[]>([]);
+  const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [bannerSubtitle, setBannerSubtitle] = useState('');
+  const [bannerTargetUrl, setBannerTargetUrl] = useState('');
+  const [bannerButtonText, setBannerButtonText] = useState('');
+  const [bannerSortOrder, setBannerSortOrder] = useState('0');
+  const [bannerIsActive, setBannerIsActive] = useState(true);
+  const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
+  const [bannerSaving, setBannerSaving] = useState(false);
+  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
 
   // Filter for reports
   const [reportFilter, setReportFilter] = useState<'all' | 'open' | 'resolved' | 'dismissed'>('open');
@@ -193,6 +216,19 @@ function AdminContent() {
         .order('created_at', { ascending: false });
 
       if (verifsData) setVerifications(verifsData);
+
+      const { data: bannerData, error: bannerError } = await supabase
+        .from('homepage_banners')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (bannerError) {
+        console.error('Error fetching homepage banners:', bannerError);
+        setBannerMessage(`โหลดแบนเนอร์ไม่สำเร็จ: ${bannerError.message}`);
+      } else {
+        setBanners(bannerData || []);
+      }
 
       // สรุปตัวเลข
       const openCount = reportsData?.filter((r) => r.status === 'open').length || 0;
@@ -332,6 +368,141 @@ function AdminContent() {
       console.error('Error opening verification document:', err);
       alert('เปิดเอกสารยืนยันตัวตนไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และการตั้งค่า private bucket');
     }
+  }
+
+  function resetBannerForm() {
+    setEditingBannerId(null);
+    setBannerTitle('');
+    setBannerSubtitle('');
+    setBannerTargetUrl('');
+    setBannerButtonText('');
+    setBannerSortOrder(String(banners.length));
+    setBannerIsActive(true);
+    setBannerImageFile(null);
+    setBannerMessage(null);
+  }
+
+  function handleEditBanner(banner: AdminBanner) {
+    setEditingBannerId(banner.id);
+    setBannerTitle(banner.title);
+    setBannerSubtitle(banner.subtitle || '');
+    setBannerTargetUrl(banner.target_url || '');
+    setBannerButtonText(banner.button_text || '');
+    setBannerSortOrder(String(banner.sort_order));
+    setBannerIsActive(banner.is_active);
+    setBannerImageFile(null);
+    setBannerMessage(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function handleSaveBanner(e: React.FormEvent) {
+    e.preventDefault();
+    setBannerMessage(null);
+
+    const title = bannerTitle.trim();
+    const targetUrl = bannerTargetUrl.trim();
+    if (!title) {
+      setBannerMessage('กรุณากรอกหัวข้อแบนเนอร์');
+      return;
+    }
+    if (!editingBannerId && !bannerImageFile) {
+      setBannerMessage('กรุณาเลือกรูปแบนเนอร์');
+      return;
+    }
+    if (bannerImageFile && !['image/jpeg', 'image/png', 'image/webp'].includes(bannerImageFile.type)) {
+      setBannerMessage('รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP');
+      return;
+    }
+    if (bannerImageFile && bannerImageFile.size > 8 * 1024 * 1024) {
+      setBannerMessage('รูปแบนเนอร์ต้องมีขนาดไม่เกิน 8 MB');
+      return;
+    }
+    const isInternalUrl = targetUrl.startsWith('/') && !targetUrl.startsWith('//');
+    const isHttpUrl = /^https?:\/\//i.test(targetUrl);
+    if (targetUrl && !isInternalUrl && !isHttpUrl) {
+      setBannerMessage('ลิงก์ต้องเริ่มด้วย / หรือ http:// หรือ https://');
+      return;
+    }
+
+    setBannerSaving(true);
+    let uploadedPath: string | null = null;
+    const previousBanner = banners.find((banner) => banner.id === editingBannerId);
+    try {
+      let imagePath = previousBanner?.image_path || '';
+      let imageUrl = previousBanner?.image_url || '';
+      if (bannerImageFile) {
+        const extension = bannerImageFile.type === 'image/png' ? 'png' : bannerImageFile.type === 'image/webp' ? 'webp' : 'jpg';
+        uploadedPath = `${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from('banner-images')
+          .upload(uploadedPath, bannerImageFile, { contentType: bannerImageFile.type });
+        if (uploadError) throw uploadError;
+
+        imagePath = uploadedPath;
+        const { data: { publicUrl } } = supabase.storage.from('banner-images').getPublicUrl(imagePath);
+        imageUrl = publicUrl;
+      }
+
+      const { error } = await supabase.from('homepage_banners').upsert({
+        ...(editingBannerId ? { id: editingBannerId } : {}),
+        title,
+        subtitle: bannerSubtitle.trim() || null,
+        image_url: imageUrl,
+        image_path: imagePath,
+        target_url: targetUrl || null,
+        button_text: targetUrl ? bannerButtonText.trim() || 'ดูเพิ่มเติม' : null,
+        is_active: bannerIsActive,
+        sort_order: Number.isFinite(Number(bannerSortOrder)) ? Number(bannerSortOrder) : banners.length,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+
+      if (uploadedPath && previousBanner?.image_path) {
+        const { error: removeError } = await supabase.storage.from('banner-images').remove([previousBanner.image_path]);
+        if (removeError) console.error('Error removing replaced banner image:', removeError);
+      }
+
+      resetBannerForm();
+      await fetchAdminData();
+    } catch (err: unknown) {
+      console.error('Error saving homepage banner:', err);
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from('banner-images').remove([uploadedPath]);
+        if (cleanupError) console.error('Error cleaning up uploaded banner image:', cleanupError);
+      }
+      setBannerMessage(err instanceof Error ? `บันทึกแบนเนอร์ไม่สำเร็จ: ${err.message}` : 'บันทึกแบนเนอร์ไม่สำเร็จ');
+    } finally {
+      setBannerSaving(false);
+    }
+  }
+
+  async function handleDeleteBanner(banner: AdminBanner) {
+    if (!confirm(`ยืนยันลบแบนเนอร์ "${banner.title}" หรือไม่?`)) return;
+
+    const { error } = await supabase.from('homepage_banners').delete().eq('id', banner.id);
+    if (error) {
+      console.error('Error deleting homepage banner:', error);
+      alert(`ลบแบนเนอร์ไม่สำเร็จ: ${error.message}`);
+      return;
+    }
+
+    const { error: storageError } = await supabase.storage.from('banner-images').remove([banner.image_path]);
+    if (storageError) console.error('Error deleting banner image:', storageError);
+    if (editingBannerId === banner.id) resetBannerForm();
+    await fetchAdminData();
+  }
+
+  async function handleToggleBanner(banner: AdminBanner) {
+    const { error } = await supabase
+      .from('homepage_banners')
+      .update({ is_active: !banner.is_active, updated_at: new Date().toISOString() })
+      .eq('id', banner.id);
+    if (error) {
+      console.error('Error toggling homepage banner:', error);
+      alert(`เปลี่ยนสถานะแบนเนอร์ไม่สำเร็จ: ${error.message}`);
+      return;
+    }
+    setBanners((current) => current.map((item) => item.id === banner.id ? { ...item, is_active: !item.is_active } : item));
   }
 
   // มอบ/ยกเลิกป้าย Verified Seller แบบแมนนวลในแท็บจัดการสมาชิก
@@ -474,6 +645,20 @@ function AdminContent() {
       {!loading && isAdmin && isPinUnlocked && (
       <main className="max-w-7xl w-full mx-auto px-4 py-6 space-y-6 flex-1">
 
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              resetBannerForm();
+              setActiveTab('banners');
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500"
+          >
+            <Plus className="h-4 w-4" />
+            เพิ่มแบนเนอร์
+          </button>
+        </div>
+
         {/* Stat Cards Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-[#171426] border border-purple-900/40 rounded-2xl p-4 space-y-1">
@@ -554,7 +739,169 @@ function AdminContent() {
             <Users className="h-4 w-4" />
             <span>สมาชิก ({stats.totalUsers})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('banners')}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${activeTab === 'banners'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-purple-900/30'
+              }`}
+          >
+            <ImagePlus className="h-4 w-4" />
+            <span>แบนเนอร์ ({banners.length})</span>
+          </button>
         </div>
+
+        {activeTab === 'banners' && (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <form onSubmit={handleSaveBanner} className="h-fit space-y-4 rounded-2xl border border-purple-900/40 bg-[#171426] p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-bold text-white">{editingBannerId ? 'แก้ไขแบนเนอร์' : 'เพิ่มแบนเนอร์ใหม่'}</h3>
+                {editingBannerId && (
+                  <button type="button" onClick={resetBannerForm} className="text-xs text-gray-400 hover:text-white">
+                    ยกเลิกแก้ไข
+                  </button>
+                )}
+              </div>
+
+              {bannerMessage && (
+                <div role="alert" className="rounded-xl border border-red-500/30 bg-red-950/30 p-3 text-xs text-red-300">
+                  {bannerMessage}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-300">หัวข้อ *</label>
+                <input
+                  required
+                  maxLength={120}
+                  value={bannerTitle}
+                  onChange={(e) => setBannerTitle(e.target.value)}
+                  className="w-full rounded-xl border border-purple-900/60 bg-[#0d0b14] px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"
+                  placeholder="เช่น เลือกหมวดหมู่ที่คุณสนใจ"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-300">ข้อความรอง</label>
+                <textarea
+                  rows={2}
+                  maxLength={240}
+                  value={bannerSubtitle}
+                  onChange={(e) => setBannerSubtitle(e.target.value)}
+                  className="w-full resize-y rounded-xl border border-purple-900/60 bg-[#0d0b14] px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"
+                  placeholder="คำอธิบายสั้นๆ ใต้หัวข้อ"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-300">
+                  รูปแบนเนอร์ {editingBannerId ? '(ไม่เลือกเพื่อใช้รูปเดิม)' : '*'}
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  required={!editingBannerId}
+                  onChange={(e) => setBannerImageFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-900/60 file:px-3 file:py-2 file:font-semibold file:text-purple-100 hover:file:bg-purple-800"
+                />
+                <p className="mt-1 text-[11px] text-gray-500">JPG, PNG หรือ WEBP ไม่เกิน 8 MB แนะนำภาพแนวนอน 16:5</p>
+                {bannerImageFile && <p className="mt-1 text-xs text-purple-300">{bannerImageFile.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-gray-300">ลิงก์ปลายทาง</label>
+                  <input
+                    type="text"
+                    value={bannerTargetUrl}
+                    onChange={(e) => setBannerTargetUrl(e.target.value)}
+                    className="w-full rounded-xl border border-purple-900/60 bg-[#0d0b14] px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"
+                    placeholder="/guide หรือ https://..."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-gray-300">ข้อความปุ่ม</label>
+                  <input
+                    maxLength={30}
+                    value={bannerButtonText}
+                    onChange={(e) => setBannerButtonText(e.target.value)}
+                    className="w-full rounded-xl border border-purple-900/60 bg-[#0d0b14] px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"
+                    placeholder="ดูเพิ่มเติม"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-xs text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={bannerIsActive}
+                    onChange={(e) => setBannerIsActive(e.target.checked)}
+                    className="accent-purple-600"
+                  />
+                  แสดงบนหน้าแรก
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-300">
+                  ลำดับ
+                  <input
+                    type="number"
+                    value={bannerSortOrder}
+                    onChange={(e) => setBannerSortOrder(e.target.value)}
+                    className="w-20 rounded-lg border border-purple-900/60 bg-[#0d0b14] px-2 py-1.5 text-sm text-white"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={bannerSaving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-500 disabled:opacity-60"
+              >
+                {editingBannerId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {bannerSaving ? 'กำลังบันทึก...' : editingBannerId ? 'บันทึกแบนเนอร์' : 'เพิ่มแบนเนอร์'}
+              </button>
+            </form>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-gray-200">รายการแบนเนอร์ ({banners.length})</h3>
+              {banners.length === 0 ? (
+                <div className="rounded-2xl border border-purple-900/40 bg-[#171426] p-8 text-center text-sm text-gray-400">
+                  ยังไม่มีแบนเนอร์ เพิ่มรายการแรกได้จากแบบฟอร์มนี้
+                </div>
+              ) : (
+                banners.map((banner) => (
+                  <div key={banner.id} className="overflow-hidden rounded-2xl border border-purple-900/40 bg-[#171426]">
+                    <div className="relative h-32 sm:h-40">
+                      <img src={banner.image_url} alt="" className="h-full w-full object-cover" />
+                      <span className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold ${banner.is_active ? 'bg-green-500/90 text-white' : 'bg-gray-900/90 text-gray-300'}`}>
+                        {banner.is_active ? 'กำลังแสดง' : 'ปิดใช้งาน'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-white">{banner.title}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-gray-400">{banner.subtitle || 'ไม่มีข้อความรอง'}</p>
+                        <p className="mt-1 text-[11px] text-purple-300">ลำดับ {banner.sort_order}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button type="button" onClick={() => handleToggleBanner(banner)} className="rounded-lg border border-purple-800 px-2.5 py-2 text-xs text-gray-200 hover:bg-purple-900/40">
+                          {banner.is_active ? 'ซ่อน' : 'แสดง'}
+                        </button>
+                        <button type="button" onClick={() => handleEditBanner(banner)} className="rounded-lg border border-purple-800 p-2 text-purple-200 hover:bg-purple-900/40" title="แก้ไข">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => handleDeleteBanner(banner)} className="rounded-lg border border-red-900/70 p-2 text-red-300 hover:bg-red-950/50" title="ลบ">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tab 1: จัดการรายงานคนโกง พร้อมดูหลักฐาน (Scam Reports Management) */}
         {activeTab === 'reports' && (

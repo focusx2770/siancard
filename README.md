@@ -29,6 +29,10 @@ Listing URLs use an 8-character alphanumeric code while the database retains the
 
 For seller verification, run [`verification_requests_schema.sql`](./verification_requests_schema.sql), [`verification_storage_setup.sql`](./verification_storage_setup.sql), and [`verified_seller_status.sql`](./verified_seller_status.sql) in the Supabase SQL Editor. The status migration adds the public verification flag and admin-only RPCs used to approve/reject requests. New identity-document uploads use a private bucket accessible to the document owner and admins only. Documents uploaded before this change to the public `card-images` bucket remain public; migrate them to the private bucket or delete them in Supabase Storage.
 
+## Homepage banners
+
+Run [`homepage_banners_schema.sql`](./homepage_banners_schema.sql) in the Supabase SQL Editor before using the admin banner tab. Admin users must have `profiles.role = 'admin'` to manage banners and upload images. The migration creates the public banner-image bucket and policies; only active banners appear on the home page.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

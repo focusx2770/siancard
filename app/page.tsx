@@ -27,11 +27,12 @@ import {
   ShoppingBag,
   Info
 } from 'lucide-react';
-import HeroCategoryExplorer from '@/components/HeroCategoryExplorer';
+import HeroCategoryExplorer, { type HomeBanner } from '@/components/HeroCategoryExplorer';
 import Navbar from '@/components/Navbar';
 
 export default function Home() {
   const [listings, setListings] = useState<Listing[]>([]);
+  const [homeBanners, setHomeBanners] = useState<HomeBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -51,6 +52,25 @@ export default function Home() {
   useEffect(() => {
     fetchListings();
   }, [selectedCondition, selectedGame, sortBy]);
+
+  useEffect(() => {
+    async function fetchHomeBanners() {
+      const { data, error } = await supabase
+        .from('homepage_banners')
+        .select('id, title, subtitle, image_url, target_url, button_text')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching homepage banners:', error);
+        return;
+      }
+      setHomeBanners(data || []);
+    }
+
+    fetchHomeBanners();
+  }, []);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -218,6 +238,7 @@ export default function Home() {
         <HeroCategoryExplorer
           selectedGame={selectedGame}
           onSelectGame={(slug) => setSelectedGame(slug)}
+          banners={homeBanners}
         />
         
         <div id="card-listings-section" className="scroll-mt-20 grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">

@@ -4,9 +4,19 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { ArrowRight, ChevronRight, Clock, Lock, CheckCircle2 } from 'lucide-react';
 
+export interface HomeBanner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  image_url: string;
+  target_url: string | null;
+  button_text: string | null;
+}
+
 interface HeroCategoryExplorerProps {
   selectedGame: string;
   onSelectGame: (gameSlug: string) => void;
+  banners: HomeBanner[];
 }
 
 const mainFranchises = [
@@ -65,8 +75,19 @@ const comingSoonFranchises = [
 export default function HeroCategoryExplorer({
   selectedGame,
   onSelectGame,
+  banners,
 }: HeroCategoryExplorerProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+
+  React.useEffect(() => {
+    if (banners.length < 2) return;
+
+    const timer = window.setInterval(() => {
+      setActiveBannerIndex((index) => (index + 1) % banners.length);
+    }, 6000);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
 
   const handleComingSoonClick = (name: string) => {
     setToastMessage(`หมวดหมู่ ${name} กำลังจะเปิดให้บริการเร็วๆ นี้ (Coming Soon) ⏳`);
@@ -83,6 +104,8 @@ export default function HeroCategoryExplorer({
     }
   };
 
+  const currentBannerIndex = banners.length > 0 ? activeBannerIndex % banners.length : 0;
+
   return (
     <section id="hero-categories" className="relative w-full pt-2 pb-10 text-white select-none">
       {/* Toast Notification */}
@@ -93,49 +116,93 @@ export default function HeroCategoryExplorer({
         </div>
       )}
 
-      {/* Hero Header Area: Headline + Characters */}
-      <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4 min-h-[140px] lg:min-h-[170px] mb-6 overflow-hidden">
-        {/* Left Column: Titles */}
-        <div className="z-10 max-w-xl py-2">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white drop-shadow-md">
-            เลือกหมวดหมู่ที่
-            <span className="bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">
-              คุณสนใจ
-            </span>
-          </h1>
-
-          <p className="text-purple-200/80 text-sm sm:text-base font-normal mt-2.5">
-            ค้นหาการ์ดจากแฟรนไชส์ยอดนิยมได้ที่นี่
-          </p>
-
-          <div className="flex items-center gap-3 mt-3">
-            <div className="w-12 h-1 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full shadow-sm shadow-purple-500/50" />
-            {selectedGame !== 'all' && (
-              <button
-                onClick={() => onSelectGame('all')}
-                className="text-xs text-purple-300 hover:text-white underline font-semibold transition cursor-pointer"
-              >
-                ล้างการเลือก (แสดงทุกเกม)
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Characters Background Art (Pikachu, Luffy, Yami Yugi) */}
-        <div className="absolute right-0 top-0 bottom-0 w-full md:w-[58%] lg:w-[50%] pointer-events-none opacity-85 md:opacity-95 overflow-hidden">
-          <div className="relative w-full h-full">
+      <div className="relative mb-6 min-h-[190px] overflow-hidden rounded-3xl border border-purple-400/20 bg-[#110d24] shadow-xl sm:min-h-[230px] lg:min-h-[280px]">
+        {banners.length > 0 ? (
+          banners.map((banner, index) => (
+            <div
+              key={banner.id}
+              className={`absolute inset-0 transition-opacity duration-700 ${index === currentBannerIndex ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+              aria-hidden={index !== currentBannerIndex}
+            >
+              <Image
+                src={banner.image_url}
+                alt=""
+                fill
+                priority={index === 0}
+                sizes="(max-width: 768px) 100vw, 1280px"
+                className="object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#090715]/95 via-[#090715]/65 to-[#090715]/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#090715]/60 via-transparent to-transparent" />
+              <div className="relative z-10 flex min-h-[190px] max-w-2xl flex-col items-start justify-center p-6 sm:min-h-[230px] sm:p-9 lg:min-h-[280px] lg:p-12">
+                <h1 className="text-2xl font-black leading-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
+                  {banner.title}
+                </h1>
+                {banner.subtitle && (
+                  <p className="mt-2 max-w-xl text-sm text-purple-100 drop-shadow sm:mt-3 sm:text-base">
+                    {banner.subtitle}
+                  </p>
+                )}
+                {banner.target_url && banner.button_text && (
+                  <a
+                    href={banner.target_url}
+                    target={banner.target_url.startsWith('http') ? '_blank' : undefined}
+                    rel={banner.target_url.startsWith('http') ? 'noreferrer' : undefined}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-purple-500 sm:mt-5"
+                    tabIndex={index === currentBannerIndex ? 0 : -1}
+                  >
+                    {banner.button_text}
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
             <Image
               src="/images/franchises/hero-characters.jpg"
-              alt="Popular TCG Characters"
+              alt="Popular trading card characters"
               fill
               priority
+              sizes="(max-width: 768px) 100vw, 1280px"
               className="object-cover object-right"
             />
-            {/* Soft Radial and Left Gradients to Blend Seamlessly */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#090715] via-[#090715]/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#090715] via-transparent to-[#090715]/30" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#090715]/95 via-[#090715]/65 to-transparent" />
+            <div className="relative z-10 flex min-h-[190px] flex-col items-start justify-center p-6 sm:min-h-[230px] sm:p-9 lg:min-h-[280px] lg:p-12">
+              <h1 className="text-2xl font-black leading-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
+                เลือกหมวดหมู่ที่ <span className="text-purple-300">คุณสนใจ</span>
+              </h1>
+              <p className="mt-2 text-sm text-purple-100 sm:mt-3 sm:text-base">
+                ค้นหาการ์ดจากแฟรนไชส์ยอดนิยมได้ที่นี่
+              </p>
+            </div>
+          </>
+        )}
+
+        {banners.length > 1 && (
+          <div className="absolute bottom-4 right-5 z-20 flex items-center gap-2" aria-label="เลือกแบนเนอร์">
+            {banners.map((banner, index) => (
+              <button
+                key={banner.id}
+                type="button"
+                aria-label={`แสดงแบนเนอร์ ${index + 1}`}
+                aria-current={index === currentBannerIndex}
+                onClick={() => setActiveBannerIndex(index)}
+                className={`h-2.5 rounded-full transition-all ${index === currentBannerIndex ? 'w-7 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'}`}
+              />
+            ))}
           </div>
-        </div>
+        )}
+
+        {selectedGame !== 'all' && (
+          <button
+            onClick={() => onSelectGame('all')}
+            className="absolute bottom-4 left-5 z-20 text-xs font-semibold text-white underline underline-offset-4"
+          >
+            ล้างการเลือกหมวดหมู่
+          </button>
+        )}
       </div>
 
       {/* 3 Main Featured Cards: Pokémon, One Piece, Yu-Gi-Oh! */}
