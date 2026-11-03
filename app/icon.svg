@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#211344"/>
+      <stop offset="1" stop-color="#090715"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#5b21b6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#background)"/>
+  <g fill="none" stroke="#8b5cf6" stroke-linecap="round" stroke-width="2.5">
+    <path d="M25 14h23a4 4 0 0 1 4 4v32a4 4 0 0 1-4 4H28"/>
+    <path d="M21 11h23a4 4 0 0 1 4 4v32a4 4 0 0 1-4 4H24"/>
+  </g>
+  <rect x="15" y="12" width="32" height="42" rx="5" fill="url(#card)" stroke="#e9d5ff" stroke-width="2"/>
+  <path d="M21 18h20v30H21z" fill="none" stroke="#ffffff" stroke-opacity=".28" stroke-width="1.5"/>
+  <text x="31" y="43" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="29" font-style="italic" font-weight="900" text-anchor="middle">S</text>
+  <path d="M13 5.5c1.1 3.2 2.3 4.4 5.5 5.5-3.2 1.1-4.4 2.3-5.5 5.5-1.1-3.2-2.3-4.4-5.5-5.5 3.2-1.1 4.4-2.3 5.5-5.5Z" fill="#fbbf24"/>
+</svg>
