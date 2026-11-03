@@ -129,6 +129,7 @@ export default function HeroCategoryExplorer({
                 alt=""
                 fill
                 priority={index === 0}
+                unoptimized
                 sizes="(max-width: 768px) 100vw, 1280px"
                 className="object-cover object-center"
               />
