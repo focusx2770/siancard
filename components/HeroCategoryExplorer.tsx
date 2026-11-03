@@ -135,12 +135,12 @@ export default function HeroCategoryExplorer({
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#090715]/95 via-[#090715]/65 to-[#090715]/10" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#090715]/60 via-transparent to-transparent" />
-              <div className="relative z-10 flex min-h-[190px] max-w-2xl flex-col items-start justify-center p-6 sm:min-h-[230px] sm:p-9 lg:min-h-[280px] lg:p-12">
-                <h1 className="text-2xl font-black leading-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
+              <div className="absolute bottom-5 left-5 z-10 flex max-w-[75%] flex-col items-start sm:bottom-7 sm:left-8 lg:bottom-9 lg:left-10">
+                <h1 className="text-base font-black leading-tight text-white drop-shadow-md sm:text-lg lg:text-xl">
                   {banner.title}
                 </h1>
                 {banner.subtitle && (
-                  <p className="mt-2 max-w-xl text-sm text-purple-100 drop-shadow sm:mt-3 sm:text-base">
+                  <p className="mt-1 max-w-xl text-[11px] text-purple-100 drop-shadow sm:text-xs">
                     {banner.subtitle}
                   </p>
                 )}
@@ -149,7 +149,7 @@ export default function HeroCategoryExplorer({
                     href={banner.target_url}
                     target={banner.target_url.startsWith('http') ? '_blank' : undefined}
                     rel={banner.target_url.startsWith('http') ? 'noreferrer' : undefined}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-purple-500 sm:mt-5"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg transition hover:bg-purple-500"
                     tabIndex={index === currentBannerIndex ? 0 : -1}
                   >
                     {banner.button_text}
@@ -170,11 +170,11 @@ export default function HeroCategoryExplorer({
               className="object-cover object-right"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-[#090715]/95 via-[#090715]/65 to-transparent" />
-            <div className="relative z-10 flex min-h-[190px] flex-col items-start justify-center p-6 sm:min-h-[230px] sm:p-9 lg:min-h-[280px] lg:p-12">
-              <h1 className="text-2xl font-black leading-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
+            <div className="absolute bottom-5 left-5 z-10 flex flex-col items-start sm:bottom-7 sm:left-8 lg:bottom-9 lg:left-10">
+              <h1 className="text-base font-black leading-tight text-white drop-shadow-md sm:text-lg lg:text-xl">
                 เลือกหมวดหมู่ที่ <span className="text-purple-300">คุณสนใจ</span>
               </h1>
-              <p className="mt-2 text-sm text-purple-100 sm:mt-3 sm:text-base">
+              <p className="mt-1 text-[11px] text-purple-100 sm:text-xs">
                 ค้นหาการ์ดจากแฟรนไชส์ยอดนิยมได้ที่นี่
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function HeroCategoryExplorer({
         {selectedGame !== 'all' && (
           <button
             onClick={() => onSelectGame('all')}
-            className="absolute bottom-4 left-5 z-20 text-xs font-semibold text-white underline underline-offset-4"
+            className="absolute right-5 top-4 z-20 text-xs font-semibold text-white underline underline-offset-4 sm:right-7 sm:top-6"
           >
             ล้างการเลือกหมวดหมู่
           </button>
